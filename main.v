@@ -1,7 +1,6 @@
 module main
 
 import veb
-import rand
 
 const port = 8080
 
@@ -27,10 +26,12 @@ pub fn (app &App) before_request() {
 
 @['/'; get]
 pub fn (app &App) get_footer(mut ctx Context) veb.Result {
-    user_name := ctx.query['name'] or {
-        // we can exit early and send a different response if no `name` parameter was passed
-        return ctx.text('no user was found')
+    id := ctx.query['id'] or {
+        // we can exit early and send a different response if no `id` parameter was passed
+        "0"
     }
+
+	println('id: ${id}')
     
     return ctx.file('footer.jpeg')
 }
