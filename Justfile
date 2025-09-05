@@ -1,4 +1,4 @@
 build:
-    v -autofree -skip-unused -prod .
+    v -g -skip-unused .
 prod:
-    v -o vread-mail.c -autofree -skip-unused -prod .
+    v -skip-unused -prod .

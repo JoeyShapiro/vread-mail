@@ -27,11 +27,11 @@ pub fn (app &App) before_request() {
 @['/'; get]
 pub fn (app &App) get_footer(mut ctx Context) veb.Result {
     id := ctx.query['id'] or {
-        // we can exit early and send a different response if no `id` parameter was passed
+        // we can exit early and send a different response if no `name` parameter was passed
         "0"
     }
 
-	println('id: ${id}')
+	println(id)
     
     return ctx.file('footer.jpeg')
 }
