@@ -3,7 +3,6 @@ module main
 import veb
 import time
 import db.sqlite
-import orm
 
 const port = 8081
 
@@ -41,27 +40,15 @@ pub fn (app &App) get_footer(mut ctx Context) veb.Result {
 fn store_request(id string, ip string, user_agent string, timestamp string) ! {
 	// more data is nice, but i think this is all i really need
 	mut db := sqlite.connect('requests.db')!
-	mut qb := orm.new_query[Request](db)
-	qb.insert(Request{
-		uid: id
-		ip: ip
-		user_agent: user_agent
-		timestamp: timestamp
-	})!
+	db.exec_param_many('INSERT INTO requests (uid, ip, user_agent, timestamp) VALUES (?, ?, ?, ?)',
+		[id, ip, user_agent, timestamp])!
 	db.close()!
 }
 
 fn main() {
 	// could create file on fail but meh
 	mut db := sqlite.connect('requests.db')!
-	mut qb := orm.new_query[Request](db)
-	qb.create()! // this doesnt seem to recreate if exists
-	qb.insert(Request{
-		uid: 'init'
-		ip: '127.0.0.1'
-		user_agent: 'init'
-		timestamp: time.now().local_to_utc().format_ss_milli()
-	})!
+	db.exec('CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, uid TEXT NOT NULL, ip TEXT NOT NULL, user_agent TEXT NOT NULL, timestamp TEXT NOT NULL);')!
 	db.close()!
 
 	// veb.run(&App{}, port)
