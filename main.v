@@ -48,6 +48,7 @@ fn store_request(id string, ip string, user_agent string, timestamp string) ! {
 fn main() {
 	// could create file on fail but meh
 	mut db := sqlite.connect('requests.db')!
+	// orm might not make this any bigger, but dont really care
 	db.exec('CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, uid TEXT NOT NULL, ip TEXT NOT NULL, user_agent TEXT NOT NULL, timestamp TEXT NOT NULL);')!
 	db.close()!
 
