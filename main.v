@@ -29,19 +29,22 @@ pub fn (app &App) before_request() {
 @['/'; get]
 pub fn (app &App) get_footer(mut ctx Context) veb.Result {
     id := ctx.query['id'] or { "0" }
+	mode := ctx.query['theme'] or { "unknown" }
 
-	store_request(id, ctx.ip(), ctx.user_agent(), time.now().local_to_utc().format_ss_milli()) or { 
+	// sadly cant get exact aspect ratio unless i use js. or do every possible combination
+	// maybe there is some way to determine screen size or device
+	store_request(id, ctx.ip(), ctx.user_agent(), mode, time.now().local_to_utc().format_ss_milli()) or {
 		eprintln('failed to log request: ${err}')
 	}
     
     return ctx.file('footer.jpeg')
 }
 
-fn store_request(id string, ip string, user_agent string, timestamp string) ! {
+fn store_request(id string, ip string, user_agent string, mode string, timestamp string) ! {
 	// more data is nice, but i think this is all i really need
 	mut db := sqlite.connect('requests.db')!
-	db.exec_param_many('INSERT INTO requests (uid, ip, user_agent, timestamp) VALUES (?, ?, ?, ?)',
-		[id, ip, user_agent, timestamp])!
+	db.exec_param_many('INSERT INTO requests (uid, ip, user_agent, mode, timestamp) VALUES (?, ?, ?, ?, ?)',
+		[id, ip, user_agent, mode, timestamp])!
 	db.close()!
 }
 
@@ -49,7 +52,7 @@ fn main() {
 	// could create file on fail but meh
 	mut db := sqlite.connect('requests.db')!
 	// orm might not make this any bigger, but dont really care
-	db.exec('CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, uid TEXT NOT NULL, ip TEXT NOT NULL, user_agent TEXT NOT NULL, timestamp TEXT NOT NULL);')!
+	db.exec('CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, uid TEXT NOT NULL, ip TEXT NOT NULL, user_agent TEXT NOT NULL, mode TEXT NOT NULL, timestamp TEXT NOT NULL);')!
 	db.close()!
 
 	// veb.run(&App{}, port)
@@ -57,13 +60,4 @@ fn main() {
 	veb.run_at[App, Context](mut app, port: port, family: .ip, timeout_in_seconds: 2) or {
 		panic(err)
 	}
-}
-
-@[table: 'requests']
-struct Request {
-	id         int    @[primary; sql: serial]
-	uid        string
-	ip         string
-	user_agent string
-	timestamp  string
 }

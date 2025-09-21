@@ -7,6 +7,10 @@
 </head>
 <body>
     <h1 style="color: blue;">Sample Page</h1>
-    <img src="https://sig.thegreenhouse.dev/?id=8" alt="Placeholder Image">
+    <picture>
+        <source srcset="http://localhost:8081/?id=8&theme=light" media="(prefers-color-scheme: light)">
+        <source srcset="http://localhost:8081/?id=8&theme=dark" media="(prefers-color-scheme: dark)">
+        <img src="http://localhost:8081/?id=8&theme=unset" alt="Signature">
+    </picture>
 </body>
 </html>
