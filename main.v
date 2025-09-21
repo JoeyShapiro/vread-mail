@@ -3,12 +3,13 @@ module main
 import veb
 import time
 import db.sqlite
+import os
 
 const port = 8081
 
 struct State {
 mut:
-	cnt int
+	key string
 }
 
 pub struct App {
@@ -48,6 +49,35 @@ fn store_request(id string, ip string, user_agent string, mode string, timestamp
 	db.close()!
 }
 
+@['/read'; get]
+pub fn (app &App) read_requests(mut ctx Context) veb.Result {
+	id := ctx.query['id'] or {
+		return ctx.not_found()
+	}
+	key := ctx.query['key'] or { "" }
+
+	if key != app.state.key {
+		return ctx.not_found()
+	}
+
+	rows := get_request(id) or {
+		return ctx.text('failed to get requests for id=${id}: ${err}')
+	}
+
+	mut result := 'Requests for id=${id}:\n\n'
+	for row in rows {
+		result += 'IP: ${row.vals[0]}\nUser-Agent: ${row.vals[1]}\nTimestamp: ${row.vals[2]}\n\n'
+	}
+	return ctx.text(result)
+}
+
+fn get_request(id string) ![]sqlite.Row {
+	mut db := sqlite.connect('requests.db')!
+	mut rows := db.exec_param('SELECT ip, user_agent, mode, timestamp FROM requests WHERE uid = ?', id)!
+	db.close()!
+	return rows
+}
+
 fn main() {
 	// could create file on fail but meh
 	mut db := sqlite.connect('requests.db')!
@@ -57,6 +87,16 @@ fn main() {
 
 	// veb.run(&App{}, port)
 	mut app := &App{}
+	lock app.state {
+		key := os.getenv('KEY')
+		if key == '' {
+			eprintln('KEY environment variable is not set')
+			return
+		}
+
+		app.state = State{ key }
+	}
+
 	veb.run_at[App, Context](mut app, port: port, family: .ip, timeout_in_seconds: 2) or {
 		panic(err)
 	}
