@@ -4,6 +4,7 @@ import veb
 import time
 import db.sqlite
 import os
+import json
 
 const port = 8081
 
@@ -63,17 +64,24 @@ pub fn (app &App) read_requests(mut ctx Context) veb.Result {
 	rows := get_request(id) or {
 		return ctx.text('failed to get requests for id=${id}: ${err}')
 	}
-
-	mut result := 'Requests for id=${id}:\n\n'
+	mut requests := []Request{}
 	for row in rows {
-		result += 'IP: ${row.vals[0]}\nUser-Agent: ${row.vals[1]}\nTimestamp: ${row.vals[2]}\n\n'
+		requests << Request{
+			id: row.vals[0].int()
+			uid: row.vals[1].str()
+			ip: row.vals[2].str()
+			user_agent: row.vals[3].str()
+			mode: row.vals[4].str()
+			timestamp: row.vals[5].str()
+		}
 	}
-	return ctx.text(result)
+
+	return ctx.text(json.encode(requests))
 }
 
 fn get_request(id string) ![]sqlite.Row {
 	mut db := sqlite.connect('requests.db')!
-	mut rows := db.exec_param('SELECT ip, user_agent, mode, timestamp FROM requests WHERE uid = ?', id)!
+	mut rows := db.exec_param('SELECT id, uid, ip, user_agent, mode, timestamp FROM requests WHERE uid = ?', id)!
 	db.close()!
 	return rows
 }
@@ -100,4 +108,13 @@ fn main() {
 	veb.run_at[App, Context](mut app, port: port, family: .ip, timeout_in_seconds: 2) or {
 		panic(err)
 	}
+}
+
+struct Request {
+	id         int
+	uid        string
+	ip         string
+	user_agent string
+	mode       string
+	timestamp  string
 }
