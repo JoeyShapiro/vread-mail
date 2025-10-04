@@ -12,6 +12,7 @@ const port = 8081
 struct State {
 mut:
 	key string
+	email_password string
 }
 
 pub struct App {
@@ -41,7 +42,8 @@ pub fn (app &App) get_footer(mut ctx Context) veb.Result {
 	}
 
 	// send smtp notification
-	send_email() or {
+	password := app.state.email_password
+	send_email(password) or {
 		eprintln('failed to send email: ${err}')
 	}
 
@@ -56,12 +58,12 @@ fn store_request(id string, ip string, user_agent string, mode string, timestamp
 	db.close()!
 }
 
-fn send_email() ! {
+fn send_email(password string) ! {
 	config := smtp.Client{
         server: 'smtp.gmail.com'
         port: 587  // or 465 for SSL
         username: 'mysignamail@gmail.com'
-        password: ''
+        password: password
         from: 'mysignamail@gmail.com'
 		starttls: true // not done by default
     }
@@ -118,11 +120,6 @@ fn main() {
 	db.exec('CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, uid TEXT NOT NULL, ip TEXT NOT NULL, user_agent TEXT NOT NULL, mode TEXT NOT NULL, timestamp TEXT NOT NULL);')!
 	db.close()!
 
-	send_email() or {
-		eprintln('failed to send test email: ${err}')
-		return
-	}
-
 	// veb.run(&App{}, port)
 	mut app := &App{}
 	lock app.state {
@@ -132,7 +129,13 @@ fn main() {
 			return
 		}
 
-		app.state = State{ key }
+		email_password := os.getenv('EMAIL_PASSWORD')
+		if email_password == '' {
+			eprintln('EMAIL_PASSWORD environment variable is not set')
+			return
+		}
+
+		app.state = State{ key, email_password }
 	}
 
 	veb.run_at[App, Context](mut app, port: port, family: .ip, timeout_in_seconds: 2) or {
