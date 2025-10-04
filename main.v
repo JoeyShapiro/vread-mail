@@ -5,6 +5,7 @@ import time
 import db.sqlite
 import os
 import json
+import net.smtp
 
 const port = 8081
 
@@ -38,8 +39,13 @@ pub fn (app &App) get_footer(mut ctx Context) veb.Result {
 	store_request(id, ctx.ip(), ctx.user_agent(), mode, time.now().local_to_utc().format_ss_milli()) or {
 		eprintln('failed to log request: ${err}')
 	}
-    
-    return ctx.file('footer.jpeg')
+
+	// send smtp notification
+	send_email() or {
+		eprintln('failed to send email: ${err}')
+	}
+
+	return ctx.file('footer.jpeg')
 }
 
 fn store_request(id string, ip string, user_agent string, mode string, timestamp string) ! {
@@ -48,6 +54,25 @@ fn store_request(id string, ip string, user_agent string, mode string, timestamp
 	db.exec_param_many('INSERT INTO requests (uid, ip, user_agent, mode, timestamp) VALUES (?, ?, ?, ?, ?)',
 		[id, ip, user_agent, mode, timestamp])!
 	db.close()!
+}
+
+fn send_email() ! {
+	config := smtp.Client{
+        server: 'smtp.gmail.com'
+        port: 587  // or 465 for SSL
+        username: 'mysignamail@gmail.com'
+        password: ''
+        from: 'mysignamail@gmail.com'
+		starttls: true // not done by default
+    }
+    
+    mut client := smtp.new_client(config)!
+    
+    client.send(
+        to: 'joeyashapiro@gmail.com'
+        subject: 'Test from V'
+        body: 'This is a test email from my V app!'
+    )!
 }
 
 @['/read'; get]
@@ -92,6 +117,11 @@ fn main() {
 	// orm might not make this any bigger, but dont really care
 	db.exec('CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, uid TEXT NOT NULL, ip TEXT NOT NULL, user_agent TEXT NOT NULL, mode TEXT NOT NULL, timestamp TEXT NOT NULL);')!
 	db.close()!
+
+	send_email() or {
+		eprintln('failed to send test email: ${err}')
+		return
+	}
 
 	// veb.run(&App{}, port)
 	mut app := &App{}
