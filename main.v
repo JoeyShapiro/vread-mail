@@ -35,15 +35,17 @@ pub fn (app &App) get_footer(mut ctx Context) veb.Result {
     id := ctx.query['id'] or { "0" }
 	mode := ctx.query['theme'] or { "unknown" }
 
+	timestamp := time.now().local_to_utc().format_ss_milli()
+
 	// sadly cant get exact aspect ratio unless i use js. or do every possible combination
 	// maybe there is some way to determine screen size or device
-	store_request(id, ctx.ip(), ctx.user_agent(), mode, time.now().local_to_utc().format_ss_milli()) or {
+	store_request(id, ctx.ip(), ctx.user_agent(), mode, timestamp) or {
 		eprintln('failed to log request: ${err}')
 	}
 
 	// send smtp notification
 	password := app.state.email_password
-	send_email(password) or {
+	send_email(password, id, ctx.ip(), ctx.user_agent(), mode, timestamp) or {
 		eprintln('failed to send email: ${err}')
 	}
 
@@ -58,13 +60,13 @@ fn store_request(id string, ip string, user_agent string, mode string, timestamp
 	db.close()!
 }
 
-fn send_email(password string) ! {
+fn send_email(password string, id string, ip string, user_agent string, mode string, timestamp string) ! {
 	config := smtp.Client{
         server: 'smtp.gmail.com'
         port: 587  // or 465 for SSL
         username: 'mysignamail@gmail.com'
         password: password
-        from: 'mysignamail@gmail.com'
+        from: 'Signa Mail'
 		starttls: true // not done by default
     }
     
@@ -72,8 +74,8 @@ fn send_email(password string) ! {
     
     client.send(
         to: 'joeyashapiro@gmail.com'
-        subject: 'Test from V'
-        body: 'This is a test email from my V app!'
+        subject: '${id} has been viewed'
+        body: 'The email with the id ${id} has been viewed by ${ip} using ${user_agent} at ${timestamp} in ${mode} mode.'
     )!
 }
 
