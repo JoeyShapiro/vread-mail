@@ -41,18 +41,20 @@ pub fn (app &App) get_footer(mut ctx Context) veb.Result {
 	// this idea should have concurrency issues, but it seems to work
 	password := app.state.email_password
 	spawn fn (password string, id string, ip string, user_agent string, mode string, timestamp string) {
+		println('${time.now().local_to_utc()} got request')
 		// sadly cant get exact aspect ratio unless i use js. or do every possible combination
 		// maybe there is some way to determine screen size or device
 		store_request(id, ip, user_agent, mode, timestamp) or {
-			eprintln('failed to log request: ${err}')
+			eprintln('${time.now().local_to_utc()} failed to log request: ${err}')
 		}
+		println('${time.now().local_to_utc()} stored request')
 
 		// send smtp notification
 		send_email(password, id, ip, user_agent, mode, timestamp) or {
-			eprintln('failed to send email: ${err}')
+			eprintln('${time.now().local_to_utc()} failed to send email: ${err}')
 		}
 
-		println('notified for id=${id}')
+		println('${time.now().local_to_utc()} notified for id=${id}')
 	}(password, id, ctx.ip(), ctx.user_agent(), mode, timestamp)
 
 	return ctx.file('footer.jpeg')
